@@ -114,6 +114,7 @@ public class EndlessScrollListener extends RecyclerView.OnScrollListener {
         mListener.showToast("Finished Refreshing");
         setLoadingThreshold();
         Log.d(LOG, "Refresh Finished");
+
     }
 
     public interface OnEndlessListener {
