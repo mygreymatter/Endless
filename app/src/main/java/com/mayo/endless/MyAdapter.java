@@ -23,9 +23,9 @@ class MyAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private static final int VIEW_TYPE_LOADING = 1;
 
     private LayoutInflater mInflater;
-    private ArrayList<String> nNames;
+    private ArrayList<Test> nNames;
 
-     void setNames(ArrayList<String> names) {
+     void setNames(ArrayList<Test> names) {
         nNames = names;
         notifyDataSetChanged();
     }
@@ -64,7 +64,7 @@ class MyAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         //Log.d(LOG,"onBind Position: " + position +" ViewType: " + (nNames.size() + 1 == position ? VIEW_TYPE_LOADING : VIEW_TYPE_ITEM));
         if(holder instanceof ItemViewWrapper) {
             ItemViewWrapper itemViewWrapper = (ItemViewWrapper) holder;
-            itemViewWrapper.nameText.setText(nNames.get(position));
+            itemViewWrapper.nameText.setText(nNames.get(position).name);
         }else if(holder instanceof LoadingViewWrapper){
             LoadingViewWrapper loadingViewWrapper = (LoadingViewWrapper) holder;
 

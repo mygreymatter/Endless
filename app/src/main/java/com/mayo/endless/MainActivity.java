@@ -1,7 +1,6 @@
 package com.mayo.endless;
 
 import android.os.Bundle;
-import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -12,6 +11,12 @@ import com.mayo.endless.endless.EndlessScrollListener;
 
 import java.util.ArrayList;
 
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
+
 public class MainActivity extends AppCompatActivity
         implements EndlessScrollListener.OnEndlessListener {
 
@@ -21,9 +26,10 @@ public class MainActivity extends AppCompatActivity
     MyAdapter mAdapter;
     int index = 0;
 
-    ArrayList<String> nNames = new ArrayList<>();
-    ArrayList<String> nPrevPageNames = new ArrayList<>();
+    ArrayList<Test> nNames = new ArrayList<>();
+    //    ArrayList<String> nPrevPageNames = new ArrayList<>();
     private EndlessScrollListener endlessListener;
+    private TestAPI testAPI;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,72 +45,91 @@ public class MainActivity extends AppCompatActivity
         mAdapter.setNames(nNames);
         recyclerView.addOnScrollListener(endlessListener);
 
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl("http://demo7398861.mockable.io/")
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+
+        testAPI = retrofit.create(TestAPI.class);
+
         loadMore();
     }
 
     @Override
-    public void showToast(String message){
+    public void showToast(String message) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
     }
 
     @Override
-    public void refresh(){
-        int pageSize = endlessListener.getPageSize();
-
-        for(int i = 0; i < pageSize ; i++){
-            nNames.add(i,nPrevPageNames.get(i));
-        }
-
-        nPrevPageNames.subList(0,pageSize).clear();
-
-        endlessListener.incrementDisplayedPages();
-        if(endlessListener.getDisplayedPages() > 2){
-            nNames.subList(2 * pageSize,nNames.size()).clear();
-            mAdapter.remove(2 * pageSize,3 * pageSize);
-
-            endlessListener.onRefreshFinished();
-        }
-
+    public void refresh() {
+        Log.d(LOG, "Refresh");
+        getTestList(false);
     }
 
     @Override
     public void loadMore() {
-        new Handler().postDelayed(new Runnable() {
+        getTestList(true);
+    }
+
+    private void getTestList(final boolean isloading) {
+        int nextPage = endlessListener.getNextPage();
+        String page;
+
+        if (isloading) {
+            page = String.valueOf(nextPage);
+        } else {
+            page = String.valueOf(nextPage - 2/*pages displayed*/ - 1);
+        }
+
+        Call<ArrayList<Test>> tests = testAPI.getTests(page);
+
+        tests.enqueue(new Callback<ArrayList<Test>>() {
             @Override
-            public void run() {
+            public void onResponse(Call<ArrayList<Test>> call, Response<ArrayList<Test>> response) {
+                //Log.d(LOG, "Response: " + response);
+                if (response.body() == null)
+                    return;
 
-                final int lastPage = endlessListener.getLastPage();
+                ArrayList<Test> tester = response.body();
+                Log.d(LOG, "Pager: ");
+                Log.d(LOG, isloading ? "Loading" : "Refreshing");
+                for (Test t : tester)
+                    Log.d(LOG, "Name: " + t.name);
+
                 int pageSize = endlessListener.getPageSize();
-                int size = nNames.size();
+                int startIndex;
 
-                for (index = size; index < (pageSize * (lastPage + 1)); index++) {
-                    Log.d(LOG, "Index : " + index);
-                    nNames.add("Yaagi " + String.valueOf(index));
-                }
-                //just for tracking
-                index--;
+                if (isloading) {
+                    startIndex = nNames.size();
+                    nNames.addAll(tester);
+                    endlessListener.onLoadFinished();
+                    mAdapter.add(startIndex);
 
-                endlessListener.onLoadFinished();
-                Log.d(LOG, "Names Size : " + nNames.size());
-                mAdapter.add(size);
-
-                //display only two pages at a time
-                if (endlessListener.getDisplayedPages() > 2) {
-                    size = endlessListener.getPageSize();
-                    nPrevPageNames.clear();
-
-                    for (int index = 0; index < size; index++) {
-                        nPrevPageNames.add(nNames.get(index));
-                        Log.d(LOG, "Removed: " + nNames.get(index) + " " + index);
+                    if (endlessListener.getDisplayedPages() > 2) {
+                        nNames.subList(0, pageSize).clear();
+                        endlessListener.decrementDisplayedPages();
+                        mAdapter.remove(0, 10);
                     }
 
-                    //removes range of items at one shot
-                    nNames.subList(0, 10).clear();
-                    //endlessListener.decrementCurrentPage();
-                    endlessListener.decrementDisplayedPages();
-                    mAdapter.remove(0, 10);
+                } else {
+                    nNames.addAll(0, tester);
+                    endlessListener.incrementDisplayedPages();
+                    mAdapter.add(0);
+
+                    int size = nNames.size();
+                    startIndex = size - pageSize;
+                    nNames.subList(startIndex, startIndex + pageSize).clear();
+                    mAdapter.remove(startIndex, 10);
+
+                    endlessListener.onRefreshFinished();
+                    //mAdapter.notifyDataSetChanged();
                 }
             }
-        }, 2000);
+
+            @Override
+            public void onFailure(Call<ArrayList<Test>> call, Throwable t) {
+                Log.d(LOG, "Failed");
+            }
+        });
     }
 }

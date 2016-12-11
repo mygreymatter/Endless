@@ -17,7 +17,7 @@ public class EndlessScrollListener extends RecyclerView.OnScrollListener {
     private int mLoadingThreshold = 8;
     private int mRefreshingThreshold = 3;
     private int mPageSize = 10;
-    private int mLastPage = 0;
+    private int mLastPage = 1;
     private int mDisplayedPagesCount = 0;
     private boolean isLoading;
     private boolean isRefreshing;
@@ -40,12 +40,14 @@ public class EndlessScrollListener extends RecyclerView.OnScrollListener {
         int firstVisibleItem = layoutManager.findFirstVisibleItemPosition();
         int lastVisibleItem = layoutManager.findLastVisibleItemPosition();
 
-        //Log.d(LOG, "Scroll Up: " + dy);
+        //Log.d(LOG, "Scroll Up: " + dy + " Last: " + lastVisibleItem + " Threshold: " + mLoadingThreshold);
 
         if (dy > 0 && !isLoading && lastVisibleItem >= mLoadingThreshold) {
             isLoading = true;
             mListener.loadMore();
-        } else if (dy < 0 && !isRefreshing && mDisplayedPagesCount == 2 && mLastPage > 2 && firstVisibleItem <= mRefreshingThreshold) {
+        } else if (dy < 0 && !isRefreshing &&
+                (mLastPage > 3) &&
+                (firstVisibleItem <= mRefreshingThreshold)) {
             Log.d(LOG, "Refresh More");
             isRefreshing = true;
             mListener.showToast("Refresh More");
@@ -58,13 +60,12 @@ public class EndlessScrollListener extends RecyclerView.OnScrollListener {
         }
     }
 
-    public int getLastPage() {
+    public int getNextPage() {
         return mLastPage;
     }
 
     public void decrementCurrentPage() {
         mLastPage--;
-        mLoadingThreshold -= mPageSize;
     }
 
     public int getPageSize() {
@@ -77,7 +78,6 @@ public class EndlessScrollListener extends RecyclerView.OnScrollListener {
 
     public void decrementDisplayedPages() {
         mDisplayedPagesCount--;
-        mLoadingThreshold -= mPageSize;
     }
 
     public void incrementDisplayedPages() {
@@ -85,14 +85,17 @@ public class EndlessScrollListener extends RecyclerView.OnScrollListener {
     }
 
     public void setLoadingThreshold() {
-        if (mLastPage > 1 && mLoadingThreshold < mPageSize)
+        if(mLastPage <= 2)
+            mLoadingThreshold = 8;
+        else if( mLastPage > 2)
+            mLoadingThreshold = 18;
+
+        /*if (mLastPage == 1 && mLoadingThreshold > mPageSize)
+            mLoadingThreshold -= mPageSize;
+        else if (mLastPage > 1 && mLoadingThreshold < mPageSize)
             //check if the last page is more than 1
             //then threshold must be greater than 8
-            mLoadingThreshold += mPageSize;
-        else if (mLastPage <= 1 && mLoadingThreshold > mPageSize)
-            //if the last page is 0 and threshold  > 8,
-            // then set it to 8
-            mLoadingThreshold -= mPageSize;
+            mLoadingThreshold += mPageSize;*/
     }
 
     public void onLoadFinished() {
@@ -104,11 +107,11 @@ public class EndlessScrollListener extends RecyclerView.OnScrollListener {
         Log.d(LOG, "Loading Finished");
     }
 
-    public void onRefreshFinished(){
+    public void onRefreshFinished() {
         mLastPage--;
         mDisplayedPagesCount--;
         isRefreshing = false;
-        mListener.showToast("Finished Loading");
+        mListener.showToast("Finished Refreshing");
         setLoadingThreshold();
         Log.d(LOG, "Refresh Finished");
     }
